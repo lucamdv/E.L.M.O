@@ -5,8 +5,33 @@ import { brainProviderContract, request } from "./support/brain-provider-contrac
 import { MockBrain } from "./support/mock-brain";
 
 brainProviderContract("MockBrain", (scenario) => new MockBrain(scenario));
+brainProviderContract("MockBrain valid alternative envelope shapes", (scenario) => new MockBrain({
+  ...scenario,
+  response: {
+    ...scenario.response,
+    capabilityRequests: scenario.response.capabilityRequests ?? [],
+    uiIntents: scenario.response.uiIntents ?? [],
+  },
+  events: scenario.response.capabilityRequests?.length && scenario.response.uiIntents?.length
+    ? [{ type: "text.delta", requestId: "brain-1", delta: "Focus" }, ...scenario.events ?? []]
+    : scenario.events,
+}));
 
 describe("MockBrain programming", () => {
+  it("replays combined-output deltas exactly before the scripted final response", async () => {
+    const provider = new MockBrain({ response: {
+      text: "Focus", capabilityRequests: [{ requestId: "cap-1", capabilityId: "calendar.read", input: { day: "today" } }],
+      uiIntents: [{ type: "context.focus", payload: { contextId: "context-1" } }],
+    }, events: [{ type: "text.delta", requestId: "brain-1", delta: "Focus" }] });
+    expect(await Array.fromAsync(provider.stream(request, { turnId: "turn-1" }))).toEqual([
+      { type: "text.delta", requestId: "brain-1", delta: "Focus" },
+      { type: "response.completed", response: {
+        requestId: "brain-1", text: "Focus",
+        capabilityRequests: [{ requestId: "cap-1", capabilityId: "calendar.read", input: { day: "today" } }],
+        uiIntents: [{ type: "context.focus", payload: { contextId: "context-1" } }],
+      } },
+    ]);
+  });
   it.each(["respond", "stream"] as const)("standardizes a rejected programming gate in %s", async (mode) => {
     const waitFor = Promise.reject(new Error("private gate failure"));
     const provider = new MockBrain({ response: { text: "Hello" }, waitFor });

@@ -40,16 +40,28 @@ export function brainProviderContract(
       const provider = create({ response: {
         text: "", capabilityRequests: [{ requestId: "cap-1", capabilityId: "calendar.read", input: { day: "today" } }],
       } });
-      expect(await provider.respond(request, context)).toEqual({ ok: true, value: {
-        requestId: "brain-1", text: "",
-        capabilityRequests: [{ requestId: "cap-1", capabilityId: "calendar.read", input: { day: "today" } }],
-      } });
+      const result = await provider.respond(request, context);
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(BrainResponseSchema.parse(result.value)).toEqual(JSON.parse(JSON.stringify(result.value)));
+        expect({ ...result.value, uiIntents: result.value.uiIntents ?? [] }).toEqual({
+          requestId: "brain-1", text: "",
+          capabilityRequests: [{ requestId: "cap-1", capabilityId: "calendar.read", input: { day: "today" } }],
+          uiIntents: [],
+        });
+      }
     });
     it("outputs a semantic UI intent when scripted", async () => {
       const provider = create({ response: { text: "Focus", uiIntents: [{ type: "context.focus", payload: { contextId: "context-1" } }] } });
-      expect(await provider.respond(request, context)).toEqual({ ok: true, value: {
-        requestId: "brain-1", text: "Focus", uiIntents: [{ type: "context.focus", payload: { contextId: "context-1" } }],
-      } });
+      const result = await provider.respond(request, context);
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(BrainResponseSchema.parse(result.value)).toEqual(JSON.parse(JSON.stringify(result.value)));
+        expect({ ...result.value, capabilityRequests: result.value.capabilityRequests ?? [] }).toEqual({
+          requestId: "brain-1", text: "Focus", uiIntents: [{ type: "context.focus", payload: { contextId: "context-1" } }],
+          capabilityRequests: [],
+        });
+      }
     });
     it.skipIf(!streaming)("preserves capability requests and UI intents in final stream completion", async () => {
       const provider = create({ response: {
@@ -57,12 +69,14 @@ export function brainProviderContract(
         uiIntents: [{ type: "context.focus", payload: { contextId: "context-1" } }],
       } });
       const events = await Array.fromAsync(provider.stream!(request, context));
-      expect(events).toEqual([{ type: "response.completed", response: {
+      for (const event of events) expect(BrainStreamEventSchema.parse(event)).toEqual(JSON.parse(JSON.stringify(event)));
+      for (const event of events.slice(0, -1)) expect(event).toMatchObject({ type: "text.delta", requestId: "brain-1" });
+      expect(events.filter((event) => event.type === "response.completed")).toHaveLength(1);
+      expect(events.at(-1)).toEqual({ type: "response.completed", response: {
         requestId: "brain-1", text: "Focus",
         capabilityRequests: [{ requestId: "cap-1", capabilityId: "calendar.read", input: { day: "today" } }],
         uiIntents: [{ type: "context.focus", payload: { contextId: "context-1" } }],
-      } }]);
-      for (const event of events) expect(BrainStreamEventSchema.parse(event)).toEqual(JSON.parse(JSON.stringify(event)));
+      } });
       expect(await provider.respond(request, context)).toEqual({ ok: true, value: {
         requestId: "brain-1", text: "Focus",
         capabilityRequests: [{ requestId: "cap-1", capabilityId: "calendar.read", input: { day: "today" } }],
