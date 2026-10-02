@@ -7,8 +7,8 @@ import { IdentifierSchema } from "../contracts/primitives";
 const DefinitionSchema = z.object({
   id: IdentifierSchema,
   description: z.string(),
-  inputSchema: z.instanceof(z.ZodType),
-  outputSchema: z.instanceof(z.ZodType),
+  inputSchema: z.custom<CapabilityDefinition["inputSchema"]>((value) => value instanceof z.ZodType),
+  outputSchema: z.custom<CapabilityDefinition["outputSchema"]>((value) => value instanceof z.ZodType),
   permission: CapabilityPermissionSchema,
   execute: z.custom<CapabilityDefinition["execute"]>((value) => typeof value === "function"),
 });
@@ -19,20 +19,21 @@ export class CapabilityRegistry {
   register(definition: CapabilityDefinition): ContractResult<void> {
     const validated = validateContract(DefinitionSchema, definition);
     if (!validated.ok) return validated;
-    if (this.has(definition.id)) {
-      return { ok: false, error: createElmoError("VALIDATION_ERROR", "Capability id is already registered", { details: { capabilityId: definition.id } }) };
+    const snapshot = validated.value;
+    if (this.has(snapshot.id)) {
+      return { ok: false, error: createElmoError("VALIDATION_ERROR", "Capability id is already registered", { details: { capabilityId: snapshot.id } }) };
     }
     // Snapshot caller-owned metadata; preserve schemas and executor by reference.
-    const permission = validated.value.permission;
+    const permission = snapshot.permission;
     Object.freeze(permission.scopes);
     Object.freeze(permission);
-    this.definitions.set(definition.id, Object.freeze({
-      id: validated.value.id,
-      description: validated.value.description,
-      inputSchema: definition.inputSchema,
-      outputSchema: definition.outputSchema,
+    this.definitions.set(snapshot.id, Object.freeze({
+      id: snapshot.id,
+      description: snapshot.description,
+      inputSchema: snapshot.inputSchema,
+      outputSchema: snapshot.outputSchema,
       permission,
-      execute: definition.execute,
+      execute: snapshot.execute,
     }));
     return { ok: true, value: undefined };
   }

@@ -70,6 +70,64 @@ describe("CapabilityRegistry", () => {
     expect(ElmoErrorSchema.safeParse(result.error).success).toBe(true);
   });
 
+  it("uses the validated getter id for insertion without overwriting another registration", () => {
+    const registry = new CapabilityRegistry();
+    const original = fixture("test.first");
+    registry.register(original.definition);
+    const originalResult = registry.resolve("test.first");
+    const incoming = fixture("test.new");
+    const ids = ["test.new", "test.absent", "test.first"];
+    let reads = 0;
+    Object.defineProperty(incoming.definition, "id", { get: () => ids[reads++] ?? "test.first" });
+
+    expect(registry.register(incoming.definition).ok).toBe(true);
+    expect(registry.resolve("test.first")).toEqual(originalResult);
+    expect(registry.has("test.new")).toBe(true);
+    expect(registry.list().map((definition) => definition.id)).toEqual(["test.first", "test.new"]);
+    expect(original.calls() + incoming.calls()).toBe(0);
+  });
+
+  it("rejects the validated duplicate id even when later getter reads change", () => {
+    const registry = new CapabilityRegistry();
+    const original = fixture("test.first");
+    registry.register(original.definition);
+    const originalResult = registry.resolve("test.first");
+    const incoming = fixture();
+    let reads = 0;
+    Object.defineProperty(incoming.definition, "id", {
+      get: () => reads++ === 0 ? "test.first" : "test.absent",
+    });
+
+    const result = registry.register(incoming.definition);
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error("Expected duplicate rejection");
+    expect(result.error.details?.capabilityId).toBe("test.first");
+    expect(registry.resolve("test.first")).toEqual(originalResult);
+    expect(registry.has("test.absent")).toBe(false);
+    expect(registry.list()).toHaveLength(1);
+    expect(original.calls() + incoming.calls()).toBe(0);
+  });
+
+  it.each(["inputSchema", "outputSchema", "execute"] as const)(
+    "preserves the validated %s reference when subsequent getter reads change", (field) => {
+      const registry = new CapabilityRegistry();
+      const incoming = fixture();
+      const alternate = fixture("test.alternate");
+      const validatedReference = incoming.definition[field];
+      let reads = 0;
+      Object.defineProperty(incoming.definition, field, {
+        get: () => reads++ === 0 ? validatedReference : alternate.definition[field],
+      });
+
+      expect(registry.register(incoming.definition).ok).toBe(true);
+      const result = registry.resolve("test.first");
+      expect(result.ok).toBe(true);
+      if (!result.ok) throw new Error("Expected registered capability");
+      expect(result.value[field]).toBe(validatedReference);
+      expect(incoming.calls() + alternate.calls()).toBe(0);
+    },
+  );
+
   it.each([
     { id: "" }, { id: "invalid id" }, { id: 42 }, { description: undefined },
     { inputSchema: {} }, { outputSchema: {} }, { execute: undefined },
