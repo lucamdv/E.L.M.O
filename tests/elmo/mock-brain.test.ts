@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import type { BrainResponse, BrainStreamEvent } from "../../src/elmo/contracts/brain";
+import type { BrainProvider, BrainResponse, BrainStreamEvent } from "../../src/elmo/contracts/brain";
 import type { ElmoError } from "../../src/elmo/contracts/errors";
-import { brainProviderContract, request } from "./support/brain-provider-contract";
+import { assertCancelledEvent, assertCancelledResult, brainProviderContract, request, type ProviderScenario } from "./support/brain-provider-contract";
 import { MockBrain } from "./support/mock-brain";
 
 brainProviderContract("MockBrain", (scenario) => new MockBrain(scenario));
@@ -16,6 +16,47 @@ brainProviderContract("MockBrain valid alternative envelope shapes", (scenario) 
     ? [{ type: "text.delta", requestId: "brain-1", delta: "Focus" }, ...scenario.events ?? []]
     : scenario.events,
 }));
+
+function adaptCancellation(scenario: ProviderScenario, decorate: (error: ElmoError) => ElmoError): BrainProvider {
+  const provider = new MockBrain(scenario);
+  return {
+    id: provider.id,
+    async respond(request, context) {
+      const result = await provider.respond(request, context);
+      return !result.ok && result.error.code === "CANCELLED"
+        ? { ok: false, error: decorate(result.error) }
+        : result;
+    },
+    async *stream(request, context) {
+      for await (const event of provider.stream(request, context)) {
+        yield event.type === "error" && event.error.code === "CANCELLED"
+          ? { ...event, error: decorate(event.error) }
+          : event;
+      }
+    },
+  };
+}
+
+brainProviderContract("Provider cancellation with optional details", (scenario) => adaptCancellation(
+  scenario, (error) => ({ ...error, details: { phase: "response" } }),
+));
+
+describe("cancellation boundary assertions", () => {
+  it.each(["respond", "stream"] as const)("rejects an invalid empty cancellation message from %s", async (mode) => {
+    const provider = adaptCancellation({ response: { text: "Hello" } }, (error) => ({ ...error, message: "" }));
+    const controller = new AbortController();
+    controller.abort();
+    const context = { turnId: "turn-1", signal: controller.signal };
+    if (mode === "respond") {
+      const result = await provider.respond(request, context);
+      expect(() => assertCancelledResult(result)).toThrow();
+    } else {
+      const events = await Array.fromAsync(provider.stream!(request, context));
+      expect(events).toHaveLength(1);
+      expect(() => assertCancelledEvent(events[0], "brain-1")).toThrow();
+    }
+  });
+});
 
 describe("MockBrain programming", () => {
   it("replays combined-output deltas exactly before the scripted final response", async () => {

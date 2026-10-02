@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { BrainResponseSchema, BrainStreamEventSchema, type BrainProvider, type BrainRequest, type BrainResponse, type BrainStreamEvent } from "../../../src/elmo/contracts/brain";
-import { ElmoErrorSchema, type ElmoError } from "../../../src/elmo/contracts/errors";
+import { ElmoErrorSchema, type ContractResult, type ElmoError } from "../../../src/elmo/contracts/errors";
 
 /** A provider adapter maps these scenarios to its own deterministic test setup. */
 export type ProviderScenario = {
@@ -13,6 +13,19 @@ export const request: BrainRequest = {
   requestId: "brain-1", turnId: "turn-1", messages: [{ role: "user", text: "Hello" }],
 };
 const context = { turnId: "turn-1" };
+
+export function assertCancelledResult(result: ContractResult<BrainResponse>) {
+  expect(result.ok).toBe(false);
+  if (!result.ok) {
+    expect(ElmoErrorSchema.parse(result.error)).toEqual(JSON.parse(JSON.stringify(result.error)));
+    expect(result.error).toMatchObject({ code: "CANCELLED", retryable: false });
+  }
+}
+
+export function assertCancelledEvent(event: BrainStreamEvent, requestId: string) {
+  expect(BrainStreamEventSchema.parse(event)).toEqual(JSON.parse(JSON.stringify(event)));
+  expect(event).toMatchObject({ type: "error", requestId, error: { code: "CANCELLED", retryable: false } });
+}
 
 export function brainProviderContract(
   name: string,
@@ -114,12 +127,13 @@ export function brainProviderContract(
       const controller = new AbortController();
       controller.abort(new Error("private abort reason"));
       const provider = create({ response: { text: "ignored" }, events: [{ type: "text.delta", requestId: "brain-1", delta: "ignored" }] });
-      const cancelled = { code: "CANCELLED", message: expect.any(String), retryable: false };
       const cancelledContext = { ...context, signal: controller.signal };
-      expect(await provider.respond(request, cancelledContext)).toEqual({ ok: false, error: cancelled });
-      if (streaming) expect(await Array.fromAsync(provider.stream!(request, cancelledContext))).toEqual([
-        { type: "error", requestId: "brain-1", error: cancelled },
-      ]);
+      assertCancelledResult(await provider.respond(request, cancelledContext));
+      if (streaming) {
+        const events = await Array.fromAsync(provider.stream!(request, cancelledContext));
+        expect(events).toHaveLength(1);
+        assertCancelledEvent(events[0], "brain-1");
+      }
     });
     it.skipIf(!streaming)("stops streaming immediately after cancellation between events", async () => {
       const controller = new AbortController();
@@ -130,9 +144,7 @@ export function brainProviderContract(
       const iterator = provider.stream!(request, { ...context, signal: controller.signal })[Symbol.asyncIterator]();
       expect((await iterator.next()).value).toEqual({ type: "text.delta", requestId: "brain-1", delta: "Hel" });
       controller.abort();
-      expect((await iterator.next()).value).toEqual({ type: "error", requestId: "brain-1", error: {
-        code: "CANCELLED", message: expect.any(String), retryable: false,
-      } });
+      assertCancelledEvent((await iterator.next()).value, "brain-1");
       expect((await iterator.next()).done).toBe(true);
     });
     it.each(streaming ? ["respond", "stream"] as const : ["respond"] as const)("cancels pending %s without waiting for the scripted gate", async (mode) => {
@@ -148,8 +160,10 @@ export function brainProviderContract(
       expect(settled).toBe(false);
       controller.abort();
       const result = await pending;
-      const error = { code: "CANCELLED", message: expect.any(String), retryable: false };
-      expect(result).toEqual(mode === "respond" ? { ok: false, error } : [{ type: "error", requestId: "brain-1", error }]);
+      if (Array.isArray(result)) {
+        expect(result).toHaveLength(1);
+        assertCancelledEvent(result[0], "brain-1");
+      } else assertCancelledResult(result);
       release();
     });
   });
