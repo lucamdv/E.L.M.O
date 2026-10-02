@@ -1,0 +1,245 @@
+.figure {
+  --orb-highlight: color-mix(in oklch, white 88%, var(--ambient-light));
+  --orb-light: color-mix(in oklch, var(--ambient-light) 68%, white);
+  --orb-depth: color-mix(
+    in oklch,
+    var(--ambient-background-deep) 78%,
+    var(--text-primary)
+  );
+  display: grid;
+  justify-items: center;
+  gap: 1.1rem;
+  width: clamp(11rem, 18vw, 15rem);
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.orb {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  filter: drop-shadow(
+    0 2.2rem 3.7rem
+      color-mix(
+        in oklch,
+        var(--ambient-background-deep) calc(var(--ambient-shadow-opacity) * 100%),
+        transparent
+      )
+  );
+  will-change: transform;
+}
+
+.orb::before {
+  position: absolute;
+  z-index: -1;
+  inset: 16% 12% 8% 18%;
+  border-radius: 50%;
+  background: color-mix(in oklch, var(--ambient-background-deep) 22%, transparent);
+  content: "";
+  filter: blur(1.45rem);
+  opacity: calc(0.28 + var(--orb-density));
+  transform: translate(6%, 9%);
+}
+
+.svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.membrane {
+  stroke-width: 1.65px;
+  vector-effect: non-scaling-stroke;
+}
+
+.innerSystem {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.warmVolume {
+  opacity: calc(0.38 + var(--sunlight-intensity) * 0.22);
+}
+
+.coolVolume {
+  opacity: calc(0.44 + var(--orb-density) * 0.16);
+}
+
+.denseMembrane {
+  fill: color-mix(in oklch, var(--ambient-background-deep) 52%, transparent);
+  opacity: calc(0.18 + var(--orb-density) * 0.24);
+  filter: blur(5px);
+}
+
+.filamentField,
+.causticField {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.filamentField {
+  stroke: color-mix(in oklch, white 66%, var(--ambient-light));
+  stroke-width: 0.72;
+  opacity: calc(0.21 + var(--orb-reflection) * 0.19);
+}
+
+.filamentField path:nth-child(2),
+.filamentField path:nth-child(5) {
+  stroke: color-mix(in oklch, var(--ambient-sunlight) 70%, white);
+  stroke-width: 1.2;
+  opacity: 0.72;
+}
+
+.causticField {
+  stroke: color-mix(in oklch, var(--ambient-sunlight) 76%, white);
+  stroke-width: 4.8;
+  opacity: calc(0.16 + var(--sunlight-intensity) * 0.25);
+}
+
+.internalLens {
+  fill: color-mix(in oklch, var(--ambient-light) 28%, transparent);
+  stroke: color-mix(in oklch, white 44%, transparent);
+  stroke-width: 0.65;
+  opacity: calc(0.24 + var(--orb-reflection) * 0.14);
+  filter: blur(1.2px);
+}
+
+.lightWell {
+  fill: color-mix(in oklch, var(--ambient-sunlight) 32%, transparent);
+  opacity: calc(0.18 + var(--sunlight-intensity) * 0.16);
+  filter: blur(9px);
+}
+
+.specularField {
+  fill: none;
+  stroke: white;
+  stroke-linecap: round;
+  opacity: calc(0.3 + var(--surface-gloss) * 0.38);
+}
+
+.specularField ellipse:first-child {
+  fill: white;
+  stroke: none;
+  filter: blur(3.4px);
+}
+
+.specularField path {
+  stroke-width: 1.15;
+  opacity: 0.72;
+}
+
+.specularField ellipse:last-child {
+  fill: color-mix(in oklch, var(--ambient-horizon) 42%, transparent);
+  stroke: none;
+  filter: blur(5px);
+}
+
+.directionalPulse {
+  position: absolute;
+  inset: 18%;
+  border-radius: 48% 52% 58% 42% / 44% 52% 48% 56%;
+  background: radial-gradient(
+    circle at 72% 48%,
+    color-mix(in oklch, var(--ambient-light) 44%, transparent),
+    transparent 54%
+  );
+  opacity: 0;
+  transform: translateX(8%);
+  pointer-events: none;
+}
+
+.caption {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 0.78rem;
+  font-weight: 540;
+  letter-spacing: 0.025em;
+  color: var(--text-secondary);
+}
+
+.stateMark {
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 0 0.22rem color-mix(in oklch, currentColor 12%, transparent);
+}
+
+.figure[data-state="LISTENING"] .stateMark {
+  animation: listening-mark 0.8s ease-in-out infinite alternate;
+}
+
+.figure[data-state="THINKING"] .innerSystem {
+  animation: thinking-refraction 2.8s linear infinite;
+}
+
+.figure[data-state="TOOL_EXECUTION"] .directionalPulse {
+  opacity: 0.78;
+  animation: tool-pulse 0.8s ease-out infinite;
+}
+
+.figure[data-state="SPEAKING"] .causticField {
+  animation: speech-envelope 0.52s ease-in-out infinite alternate;
+}
+
+.figure[data-state="ERROR"] {
+  --orb-light: color-mix(in oklch, var(--text-tertiary) 72%, transparent);
+}
+
+@keyframes listening-mark {
+  to {
+    transform: scale(1.5);
+    opacity: 0.58;
+  }
+}
+
+@keyframes thinking-refraction {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes tool-pulse {
+  0% {
+    transform: translateX(0) scale(0.82);
+    opacity: 0.7;
+  }
+  100% {
+    transform: translateX(34%) scale(1.18);
+    opacity: 0;
+  }
+}
+
+@keyframes speech-envelope {
+  to {
+    transform: scale(1.035, 0.965);
+    opacity: 0.58;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .figure[data-state] .innerSystem,
+  .figure[data-state] .directionalPulse,
+  .figure[data-state] .causticField,
+  .figure[data-state] .stateMark {
+    animation: none;
+  }
+
+  .figure[data-state="TOOL_EXECUTION"] .directionalPulse {
+    opacity: 0.46;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .membrane {
+    fill: var(--ambient-surface);
+  }
+
+  .warmVolume,
+  .coolVolume,
+  .denseMembrane {
+    opacity: 0.22;
+  }
+}

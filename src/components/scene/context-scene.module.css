@@ -1,0 +1,329 @@
+.scene {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.entity {
+  position: absolute;
+  margin: 0;
+  color: var(--text-primary);
+  will-change: transform, opacity, filter;
+  pointer-events: auto;
+}
+
+.entity[data-placement="primary"] {
+  top: 32%;
+  left: 48%;
+  width: clamp(19rem, 28vw, 25rem);
+  z-index: 3;
+}
+
+.entity[data-placement="secondary-a"] {
+  top: 24%;
+  left: 77%;
+  width: clamp(13rem, 18vw, 15.5rem);
+  z-index: 2;
+}
+
+.entity[data-placement="secondary-b"] {
+  top: 66%;
+  left: 70%;
+  width: clamp(14rem, 20vw, 18rem);
+  z-index: 1;
+}
+
+.eyebrow {
+  margin-bottom: 0.75rem;
+  color: var(--text-tertiary);
+  font-size: 0.69rem;
+  font-weight: 620;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.weather {
+  padding: 0.35rem 0;
+  text-shadow: 0 0.1rem 1.4rem color-mix(in oklch, var(--ambient-background-deep) 34%, transparent);
+}
+
+.weather .temperature {
+  display: flex;
+  align-items: flex-start;
+  font-size: clamp(4.2rem, 7vw, 7rem);
+  font-weight: 300;
+  line-height: 0.88;
+  letter-spacing: -0.085em;
+}
+
+.weather .temperature span {
+  margin-top: 0.35rem;
+  font-size: 0.43em;
+  letter-spacing: -0.03em;
+}
+
+.weather p {
+  max-width: 18rem;
+  margin-top: 1.15rem;
+  color: var(--text-secondary);
+  font-size: 0.96rem;
+  line-height: 1.48;
+}
+
+.weatherFacts {
+  display: flex;
+  gap: 1.75rem;
+  margin-top: 1.25rem;
+}
+
+.weatherFacts div {
+  display: grid;
+  gap: 0.18rem;
+}
+
+.weatherFacts dt {
+  color: var(--text-tertiary);
+  font-size: 0.68rem;
+}
+
+.weatherFacts dd {
+  font-size: 0.96rem;
+}
+
+.calendar,
+.gmail {
+  position: relative;
+  isolation: isolate;
+  text-shadow: 0 0.08rem 1rem color-mix(in oklch, var(--ambient-background) 28%, transparent);
+  color: var(--text-on-material);
+}
+
+.calendar {
+  padding: clamp(1.2rem, 2vw, 1.8rem);
+  border-top: 1px solid
+    color-mix(in oklch, white 28%, transparent);
+  border-left: 1px solid
+    color-mix(
+      in oklch,
+      var(--text-on-material) calc(var(--ambient-border-opacity) * 72%),
+      transparent
+    );
+  border-radius: 1.55rem 0.5rem 2.4rem 0.7rem;
+  background: linear-gradient(
+    112deg,
+    color-mix(
+      in oklch,
+      var(--ambient-surface) calc(var(--ambient-surface-opacity) * 92%),
+      transparent
+    ) 0%,
+    color-mix(in oklch, var(--ambient-surface) 34%, transparent) 67%,
+    transparent 100%
+  );
+  box-shadow:
+    -0.8rem 1.8rem 4rem
+      color-mix(
+        in oklch,
+        var(--ambient-background-deep) calc(var(--ambient-shadow-opacity) * 72%),
+        transparent
+      ),
+    inset 0.05rem 0.05rem 0 color-mix(in oklch, white 18%, transparent);
+  backdrop-filter: blur(18px) saturate(112%);
+}
+
+.calendar h2,
+.gmail h2 {
+  font-size: clamp(1.15rem, 1.75vw, 1.6rem);
+  font-weight: 470;
+  line-height: 1.12;
+  letter-spacing: -0.035em;
+}
+
+.calendar ol,
+.gmail ul {
+  list-style: none;
+  margin-top: 1.35rem;
+}
+
+.calendar li {
+  display: grid;
+  grid-template-columns: 3.5rem 1fr;
+  gap: 0.75rem;
+  padding: 0.76rem 0;
+  border-top: 1px solid color-mix(in oklch, var(--text-on-material) 13%, transparent);
+  font-size: 0.88rem;
+}
+
+.calendar li time {
+  color: var(--text-accent);
+  font-variant-numeric: tabular-nums;
+  font-weight: 620;
+}
+
+.gmail {
+  padding: clamp(1.15rem, 1.8vw, 1.65rem);
+  border-top: 1px solid
+    color-mix(
+      in oklch,
+      var(--text-on-material) calc(var(--ambient-border-opacity) * 68%),
+      transparent
+    );
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklch, var(--ambient-surface) 28%, transparent),
+    transparent 76%
+  );
+}
+
+.gmail::before {
+  position: absolute;
+  z-index: -1;
+  top: -0.55rem;
+  left: -0.7rem;
+  width: 48%;
+  height: 72%;
+  border-radius: 58% 42% 61% 39% / 42% 61% 39% 58%;
+  background: color-mix(in oklch, var(--ambient-surface) 22%, transparent);
+  filter: blur(1.2rem);
+  content: "";
+}
+
+.gmail li {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.82rem 0;
+  border-top: 1px solid color-mix(in oklch, var(--text-on-material) 12%, transparent);
+}
+
+.gmail li div {
+  display: grid;
+  min-width: 0;
+  gap: 0.2rem;
+}
+
+.gmail strong {
+  font-size: 0.82rem;
+  font-weight: 620;
+}
+
+.gmail li span {
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: 0.73rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gmail time {
+  color: var(--text-tertiary);
+  font-size: 0.66rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.entity[data-role="secondary"] .weather .temperature {
+  font-size: clamp(3rem, 4.3vw, 4.6rem);
+}
+
+.entity[data-role="secondary"] .calendar,
+.entity[data-role="secondary"] .gmail {
+  padding: 1.05rem 0.9rem 1rem 1.1rem;
+}
+
+.entity[data-role="secondary"] .calendar {
+  border-radius: 1rem 0.35rem 1.6rem 0.45rem;
+  background: linear-gradient(
+    108deg,
+    color-mix(in oklch, var(--ambient-surface) 54%, transparent),
+    transparent 92%
+  );
+  box-shadow: none;
+  backdrop-filter: blur(12px);
+}
+
+.entity[data-role="secondary"] .calendar li:nth-child(n + 3),
+.entity[data-role="secondary"] .gmail li:nth-child(n + 2) {
+  display: none;
+}
+
+.entity[data-role="secondary"] .calendar h2,
+.entity[data-role="secondary"] .gmail h2 {
+  font-size: 1.02rem;
+}
+
+@media (max-width: 980px) {
+  .entity[data-placement="primary"] {
+    top: 43%;
+    left: 50%;
+    width: min(78vw, 30rem);
+    translate: -50% 0;
+  }
+
+  .entity[data-placement="secondary-a"] {
+    top: 72%;
+    left: 50%;
+    width: min(70vw, 25rem);
+    translate: -50% 0;
+  }
+
+  .entity[data-placement="secondary-b"] {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .entity[data-placement="primary"] {
+    top: 56%;
+    width: calc(100vw - 2rem);
+  }
+
+  .entity[data-placement="secondary-a"],
+  .entity[data-placement="secondary-b"] {
+    display: none;
+  }
+
+  .calendar,
+  .gmail {
+    border-radius: 1.25rem 0.4rem 1.8rem 0.55rem;
+    background: color-mix(
+      in oklch,
+      var(--ambient-surface) calc(var(--ambient-surface-opacity) * 92%),
+      transparent
+    );
+    box-shadow: 0 1.2rem 3rem
+      color-mix(
+        in oklch,
+        var(--ambient-background-deep) calc(var(--ambient-shadow-opacity) * 62%),
+        transparent
+      );
+    backdrop-filter: blur(18px);
+  }
+
+  .weather .temperature {
+    font-size: clamp(4rem, 20vw, 5.8rem);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .entity {
+    will-change: opacity;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .calendar,
+  .gmail {
+    background: var(--ambient-surface);
+    backdrop-filter: none;
+    border-color: color-mix(in oklch, var(--text-on-material) 40%, transparent);
+  }
+}
+
+@media (prefers-contrast: more) {
+  .calendar,
+  .gmail {
+    background: var(--ambient-background);
+    border-width: 2px;
+    border-color: var(--text-on-material);
+    backdrop-filter: none;
+  }
+}

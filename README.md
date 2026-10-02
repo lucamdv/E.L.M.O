@@ -1,36 +1,48 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Luca OS / Elmo
 
-## Getting Started
+Implementação greenfield do assistente pessoal **Elmo**, que vive dentro do **Luca OS**.
 
-First, run the development server:
+## Marco atual
+
+O marco atual implementa a fundação visual e interativa e a POC do Orb 2.0:
+
+- Adaptive Ambient UI contínua, usando `America/Recife`.
+- Orb do Elmo em SVG/CSS, preservado como padrão e fallback.
+- `ElmoOrbWebGL` isolado e carregado sob demanda, com membrana refrativa,
+  massas internas, iluminação ambiental e os seis estados operacionais.
+- Foregrounds semânticos e interpolados para tipografia, informações e controles.
+- Scene graph controlado para Weather, Calendar e Gmail.
+- Conversational Spatial UI responsiva.
+- Nascimento de conteúdo, mudança de protagonismo e interrupção.
+- Reduced motion, reduced transparency e navegação por teclado.
+
+Os dados e cenários atuais são locais e fictícios. OpenAI Realtime, Calendar, Gmail e Weather reais ainda não estão conectados.
+
+## Desenvolvimento
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Abra [http://localhost:3000](http://localhost:3000). O painel **Laboratório** permite testar horários, estados e cenas sem serviços externos.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Nenhuma credencial é necessária neste marco.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## POC Orb 2.0
 
-## Learn More
+Dependências adicionadas:
 
-To learn more about Next.js, take a look at the following resources:
+- `three@0.180.0`
+- `@react-three/fiber@9.8.1`
+- `@react-three/drei@10.7.9`
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+O Canvas pertence somente ao Elmo. A UI, as capabilities, o scene graph e o
+composer continuam em DOM/React. O WebGL usa DPR 1, duas amostras de
+transmission e cerca de 14,4 mil triângulos / 7 draw calls na cena populada.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+O chunk WebGL é lazy e mede aproximadamente 944 KiB sem compressão / 259 KiB
+com gzip no build deste marco. A inicialização observada no navegador de teste
+ficou entre 0,6 e 2,5 s. O navegador automatizado limita `requestAnimationFrame`
+mesmo com o Canvas desmontado; por isso, leituras de FPS abaixo de 10 são
+marcadas no laboratório como amostra limitada e precisam ser confirmadas em
+uma aba ativa e hardware real antes de promover WebGL a renderer principal.

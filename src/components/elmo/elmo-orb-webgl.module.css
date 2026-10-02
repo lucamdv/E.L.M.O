@@ -1,0 +1,116 @@
+.figure {
+  display: grid;
+  justify-items: center;
+  gap: 0.7rem;
+  width: clamp(20rem, 32vw, 27rem);
+  margin: 0;
+  color: var(--text-primary);
+  transition: width 360ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.figure[data-has-context="true"] {
+  width: clamp(16rem, 23vw, 19rem);
+}
+
+.canvasWrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  filter: drop-shadow(
+    0 2.4rem 4.5rem
+      color-mix(
+        in oklch,
+        var(--ambient-background-deep) calc(var(--ambient-shadow-opacity) * 88%),
+        transparent
+      )
+  );
+}
+
+.canvasWrap::after {
+  position: absolute;
+  z-index: -1;
+  right: 8%;
+  bottom: 7%;
+  width: 68%;
+  height: 24%;
+  border-radius: 52% 48% 58% 42% / 44% 52% 48% 56%;
+  background: color-mix(in oklch, var(--ambient-sunlight) 18%, transparent);
+  content: "";
+  filter: blur(1.6rem);
+  opacity: calc(var(--sunlight-intensity) * 0.42);
+  transform: rotate(-8deg) skewX(-10deg);
+}
+
+.canvasWrap canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+  pointer-events: none;
+}
+
+.figure[data-follow-cursor="true"] .canvasWrap canvas {
+  pointer-events: auto;
+}
+
+.caption {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  font-weight: 540;
+  letter-spacing: 0.025em;
+}
+
+.stateMark {
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 50%;
+  background: var(--text-accent);
+  box-shadow: 0 0 0 0.22rem color-mix(in oklch, var(--text-accent) 12%, transparent);
+}
+
+.figure[data-state="LISTENING"] .stateMark {
+  transform: scale(1.28);
+}
+
+.figure[data-state="TOOL_EXECUTION"] .stateMark {
+  border-radius: 45% 55% 65% 35%;
+  transform: translateX(0.14rem) scaleX(1.45);
+}
+
+.figure[data-state="ERROR"] .stateMark {
+  opacity: 0.58;
+  transform: scale(0.78);
+}
+
+@media (max-width: 980px) {
+  .figure,
+  .figure[data-has-context="true"] {
+    width: clamp(18rem, 42vw, 22rem);
+  }
+}
+
+@media (max-width: 640px) {
+  .figure {
+    width: min(20rem, 82vw);
+  }
+
+  .figure[data-has-context="true"] {
+    width: min(18rem, 76vw);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .figure {
+    transition-duration: 120ms;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .canvasWrap {
+    filter: drop-shadow(
+      0 1.8rem 3rem color-mix(in oklch, var(--ambient-background-deep) 38%, transparent)
+    );
+  }
+}
