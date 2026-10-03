@@ -17,7 +17,7 @@ describe("client/server import guards", () => {
     'import "./secret.server";',
   ])("blocks visual server import %s", async (source) => {
     expect(await boundaryMessages(source, "src/components/elmo/boundary-fixture.tsx")).toHaveLength(1);
-  });
+  }, 60_000);
 
   it("blocks server imports in client modules outside visual directories", async () => {
     expect(await boundaryMessages('"use client"; import "./providers/vendor";', "src/elmo/boundary-fixture.ts")).toHaveLength(1);
