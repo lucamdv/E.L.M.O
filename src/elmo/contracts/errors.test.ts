@@ -14,6 +14,16 @@ describe("standardized errors", () => {
     expect(contracts.toElmoError?.(error)).toEqual(error);
   });
 
+  it("rejects cyclic details and normalizes the error without exposing its private message", () => {
+    const details: Record<string, unknown> = {};
+    details.self = details;
+    const error = { code: "EXECUTION_ERROR", message: "private-token", retryable: false, details };
+    expect(contracts.ElmoErrorSchema.safeParse(error).success).toBe(false);
+    expect(contracts.toElmoError(error)).toEqual({
+      code: "INTERNAL_ERROR", message: "An unexpected error occurred", retryable: false,
+    });
+  });
+
   it("defaults an explicitly undefined retry option", () => {
     expect(contracts.createElmoError("NOT_FOUND", "Missing", { retryable: undefined })).toEqual({
       code: "NOT_FOUND", message: "Missing", retryable: false,

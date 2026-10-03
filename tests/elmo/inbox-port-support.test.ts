@@ -52,4 +52,16 @@ describe("InboxPortFake test support", () => {
     expect(fake.received).toHaveLength(1);
     expect(fake.received[0].payload).toEqual({ text: "Pause" });
   });
+
+  it("rejects cyclic payloads without storing them", async () => {
+    const fake = new InboxPortFake();
+    const cycle: Record<string, unknown> = {};
+    cycle.self = cycle;
+    const result = await fake.receive({ ...event, payload: cycle } as EventEnvelope);
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error("Expected cyclic payload rejection");
+    expect(result.error.code).toBe("VALIDATION_ERROR");
+    expect(ElmoErrorSchema.safeParse(JSON.parse(JSON.stringify(result.error))).success).toBe(true);
+    expect(fake.received).toEqual([]);
+  });
 });

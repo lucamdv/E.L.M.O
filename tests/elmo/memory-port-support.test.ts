@@ -117,6 +117,22 @@ describe("MemoryPortFake test support", () => {
     expect(await fake.retrieve("memory-1")).toEqual({ ok: true, value: { id: "memory-1", content: "original" } });
   });
 
+  it.each(["store", "update"] as const)("rejects cyclic %s content without changing storage", async (operation) => {
+    const fake = new MemoryPortFake();
+    await fake.store({ id: "memory-1", content: "original" });
+    const cycle: Record<string, unknown> = {};
+    cycle.self = cycle;
+    const result = operation === "store"
+      ? await fake.store({ id: "memory-2", content: cycle as JsonValue })
+      : await fake.update("memory-1", cycle as JsonValue);
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error("Expected cyclic content rejection");
+    expect(result.error.code).toBe("VALIDATION_ERROR");
+    expect(ElmoErrorSchema.safeParse(JSON.parse(JSON.stringify(result.error))).success).toBe(true);
+    expect(await fake.retrieve("memory-1")).toEqual({ ok: true, value: { id: "memory-1", content: "original" } });
+    expect(await fake.retrieve("memory-2")).toEqual({ ok: true, value: null });
+  });
+
   it("keeps update and context results detached from storage", async () => {
     const fake = new MemoryPortFake();
     await fake.store({ id: "memory-1", content: null });

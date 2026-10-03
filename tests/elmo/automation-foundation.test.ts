@@ -58,6 +58,16 @@ describe("AutomationDefinition foundation", () => {
     expect(calls).toBe(0);
   });
 
+  it.each(["trigger", "condition", "action", "delivery"] as const)("rejects a cyclic JSON graph in %s", (field) => {
+    const cycle: Record<string, unknown> = {};
+    cycle.self = cycle;
+    const input = { ...definition(), condition: { type: "test.condition", config: {} } };
+    const envelope = field === "action"
+      ? { ...input.action, input: cycle }
+      : { ...input[field], config: { nested: cycle } };
+    expect(AutomationDefinitionSchema.safeParse({ ...input, [field]: envelope }).success).toBe(false);
+  });
+
   it.each(["id", "trigger", "action", "delivery"])("requires the %s field", (field) => {
     const input: Record<string, unknown> = definition();
     delete input[field];

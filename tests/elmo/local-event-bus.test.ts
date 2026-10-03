@@ -182,6 +182,20 @@ describe("LocalEventBus", () => {
     expect(JSON.stringify(result)).not.toMatch(/private|token|stack/);
   });
 
+  it("rejects cyclic payloads with VALIDATION_ERROR before delivering to any handler", async () => {
+    const instance = new LocalEventBus();
+    const received: EventEnvelope[] = [];
+    instance.subscribe(event.type, (value) => { received.push(value); });
+    const cycle: Record<string, unknown> = {};
+    cycle.self = cycle;
+    const result = await instance.publish({ ...event, payload: cycle } as EventEnvelope);
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error("Expected cyclic payload rejection");
+    expect(result.error.code).toBe("VALIDATION_ERROR");
+    expect(ElmoErrorSchema.safeParse(JSON.parse(JSON.stringify(result.error))).success).toBe(true);
+    expect(received).toEqual([]);
+  });
+
   it.each([
     {
       name: "throwing error code getter",
