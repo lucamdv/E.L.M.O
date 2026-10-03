@@ -17,13 +17,23 @@ export class LocalEventBus implements EventBus {
   }
 
   async publish(event: EventEnvelope): Promise<ContractResult<void>> {
-    const validated = validateContract(EventEnvelopeSchema, event);
-    if (!validated.ok) return validated;
     try {
-      for (const handler of this.subscriptions.get(validated.value.type) ?? []) await handler(validated.value);
+      const validated = validateContract(EventEnvelopeSchema, event);
+      if (!validated.ok) return validated;
+      const handlers = [...(this.subscriptions.get(validated.value.type) ?? [])];
+      for (const handler of handlers) await handler(validated.value);
+      return { ok: true, value: undefined };
     } catch (error) {
-      return { ok: false, error: toElmoError(error) };
+      try {
+        const publicError = toElmoError(error);
+        // Schema parsing may preserve cycles; public failures must remain serializable.
+        JSON.stringify(publicError);
+        return { ok: false, error: publicError };
+      } catch {
+        return { ok: false, error: {
+          code: "INTERNAL_ERROR", message: "An unexpected error occurred", retryable: false,
+        } };
+      }
     }
-    return { ok: true, value: undefined };
   }
 }

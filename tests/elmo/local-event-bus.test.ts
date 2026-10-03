@@ -132,4 +132,92 @@ describe("LocalEventBus", () => {
     expect(result).toEqual({ ok: false, error: failure });
     expect(result && !result.ok && ElmoErrorSchema.safeParse(result.error).success).toBe(true);
   });
+
+  it("delivers a finite subscription snapshot when the first handler re-subscribes", async () => {
+    const instance = new LocalEventBus();
+    const order: string[] = [];
+    let calls = 0;
+    const first = () => {
+      order.push("first");
+      // Bound the old implementation's repetition so RED cannot hang the runner.
+      if (++calls === 1) {
+        removeFirst();
+        removeFirst = instance.subscribe(event.type, first);
+      }
+    };
+    let removeFirst = instance.subscribe(event.type, first);
+    instance.subscribe(event.type, () => { order.push("second"); });
+    expect(await instance.publish(event)).toEqual({ ok: true, value: undefined });
+    expect(order).toEqual(["first", "second"]);
+    order.length = 0;
+    expect(await instance.publish(event)).toEqual({ ok: true, value: undefined });
+    expect(order).toEqual(["second", "first"]);
+  });
+
+  it("applies unsubscribe during delivery only to future publishes", async () => {
+    const instance = new LocalEventBus();
+    const order: string[] = [];
+    instance.subscribe(event.type, () => { order.push("first"); removeSecond(); });
+    const removeSecond = instance.subscribe(event.type, () => { order.push("second"); });
+    expect(await instance.publish(event)).toEqual({ ok: true, value: undefined });
+    expect(order).toEqual(["first", "second"]);
+    order.length = 0;
+    expect(await instance.publish(event)).toEqual({ ok: true, value: undefined });
+    expect(order).toEqual(["first"]);
+  });
+
+  it("resolves a safe public failure when an envelope getter throws before delivery", async () => {
+    const instance = new LocalEventBus();
+    const received: EventEnvelope[] = [];
+    instance.subscribe(event.type, (value) => { received.push(value); });
+    const input = { ...event };
+    Object.defineProperty(input, "payload", {
+      enumerable: true, get: () => { throw new Error("private-token-envelope"); },
+    });
+    const result = await instance.publish(input).catch(() => undefined);
+    expect(result).toEqual({ ok: false, error: {
+      code: "INTERNAL_ERROR", message: "An unexpected error occurred", retryable: false,
+    } });
+    expect(received).toEqual([]);
+    expect(JSON.stringify(result)).not.toMatch(/private|token|stack/);
+  });
+
+  it.each([
+    {
+      name: "throwing error code getter",
+      failure: () => Object.defineProperty({}, "code", {
+        enumerable: true, get: () => { throw new Error("private-token-code"); },
+      }),
+    },
+    {
+      name: "cyclic public-error details",
+      failure: () => {
+        const details: Record<string, unknown> = {};
+        details.self = details;
+        return { code: "EXECUTION_ERROR", message: "private-token-cycle", retryable: false, details };
+      },
+    },
+    {
+      name: "hostile public-error details getter",
+      failure: () => ({
+        code: "EXECUTION_ERROR", message: "private-token-details", retryable: false,
+        details: Object.defineProperty({}, "secret", {
+          enumerable: true, get: () => { throw new Error("private-token-details-getter"); },
+        }),
+      }),
+    },
+  ])("resolves a safe public failure for $name and stops delivery", async ({ failure }) => {
+    const instance = new LocalEventBus();
+    const order: string[] = [];
+    const thrown = failure();
+    instance.subscribe(event.type, () => { order.push("failed"); throw thrown; });
+    instance.subscribe(event.type, () => { order.push("later"); });
+    const result = await instance.publish(event).catch(() => undefined);
+    expect(result).toEqual({ ok: false, error: {
+      code: "INTERNAL_ERROR", message: "An unexpected error occurred", retryable: false,
+    } });
+    expect(result && !result.ok && ElmoErrorSchema.safeParse(result.error).success).toBe(true);
+    expect(order).toEqual(["failed"]);
+    expect(JSON.stringify(result)).not.toMatch(/private|token|stack|secret/);
+  });
 });
