@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { runInNewContext } from "node:vm";
 import { z } from "zod";
 import * as contracts from "./index";
 
@@ -36,6 +37,35 @@ describe("standardized errors", () => {
     });
   });
 
+  it("sanitizes native errors even when they mimic a public error envelope", () => {
+    const error = Object.assign(new Error("private-token"), {
+      code: "EXECUTION_ERROR",
+      retryable: false,
+    });
+    expect(contracts.toElmoError(error)).toEqual({
+      code: "INTERNAL_ERROR", message: "An unexpected error occurred", retryable: false,
+    });
+  });
+
+  it("normalizes hostile values without letting reflection failures escape", () => {
+    const error = new Proxy({}, {
+      getPrototypeOf: () => { throw new Error("private-token"); },
+    });
+    expect(contracts.toElmoError(error)).toEqual({
+      code: "INTERNAL_ERROR", message: "An unexpected error occurred", retryable: false,
+    });
+  });
+
+  it("sanitizes native errors created in another JavaScript realm", () => {
+    const error = runInNewContext(
+      'Object.assign(new Error("private-token"), { code: "EXECUTION_ERROR", retryable: false })',
+    );
+    expect(error).not.toBeInstanceOf(Error);
+    expect(contracts.toElmoError(error)).toEqual({
+      code: "INTERNAL_ERROR", message: "An unexpected error occurred", retryable: false,
+    });
+  });
+
   it("returns validated data on success", () => {
     expect(contracts.validateContract?.(z.strictObject({ count: z.number() }), { count: 2 })).toEqual({ ok: true, value: { count: 2 } });
   });
@@ -49,6 +79,17 @@ describe("standardized errors", () => {
       expect(JSON.stringify(result.error)).not.toContain("secret");
       expect(result.error.details).toMatchObject({ issues: [{ path: ["count"], code: "invalid_type" }] });
     }
+  });
+
+  it("normalizes exceptions thrown while evaluating a schema", () => {
+    const input = Object.defineProperty({}, "count", {
+      enumerable: true,
+      get: () => { throw new Error("private-token"); },
+    });
+    expect(contracts.validateContract(z.strictObject({ count: z.number() }), input)).toEqual({
+      ok: false,
+      error: { code: "INTERNAL_ERROR", message: "An unexpected error occurred", retryable: false },
+    });
   });
 
   it.each([

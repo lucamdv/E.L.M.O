@@ -27,24 +27,37 @@ export function createElmoError(
 
 /** Preserve deliberate public errors; do not expose arbitrary exceptions. */
 export function toElmoError(error: unknown): ElmoError {
-  const parsed = ElmoErrorSchema.safeParse(error);
-  return parsed.success
-    ? parsed.data
-    : createElmoError("INTERNAL_ERROR", "An unexpected error occurred");
+  try {
+    const isNativeError =
+      error instanceof Error || Object.prototype.toString.call(error) === "[object Error]";
+    if (isNativeError) {
+      return createElmoError("INTERNAL_ERROR", "An unexpected error occurred");
+    }
+    const parsed = ElmoErrorSchema.safeParse(error);
+    return parsed.success
+      ? parsed.data
+      : createElmoError("INTERNAL_ERROR", "An unexpected error occurred");
+  } catch {
+    return createElmoError("INTERNAL_ERROR", "An unexpected error occurred");
+  }
 }
 
 export function validateContract<T>(schema: z.ZodType<T>, input: unknown): ContractResult<T> {
-  const parsed = schema.safeParse(input);
-  if (parsed.success) return { ok: true, value: parsed.data };
-  return {
-    ok: false,
-    error: createElmoError("VALIDATION_ERROR", "Contract validation failed", {
-      details: {
-        issues: parsed.error.issues.map((issue) => ({
-          code: issue.code,
-          path: issue.path.map((part) => typeof part === "symbol" ? String(part) : part),
-        })),
-      },
-    }),
-  };
+  try {
+    const parsed = schema.safeParse(input);
+    if (parsed.success) return { ok: true, value: parsed.data };
+    return {
+      ok: false,
+      error: createElmoError("VALIDATION_ERROR", "Contract validation failed", {
+        details: {
+          issues: parsed.error.issues.map((issue) => ({
+            code: issue.code,
+            path: issue.path.map((part) => typeof part === "symbol" ? String(part) : part),
+          })),
+        },
+      }),
+    };
+  } catch {
+    return { ok: false, error: createElmoError("INTERNAL_ERROR", "An unexpected error occurred") };
+  }
 }

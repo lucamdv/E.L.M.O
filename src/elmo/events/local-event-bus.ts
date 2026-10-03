@@ -26,7 +26,7 @@ export class LocalEventBus implements EventBus {
     } catch (error) {
       try {
         const publicError = toElmoError(error);
-        // Schema parsing may preserve cycles; public failures must remain serializable.
+        // Defense in depth: public failure payloads must remain serializable.
         JSON.stringify(publicError);
         return { ok: false, error: publicError };
       } catch {
