@@ -7,3 +7,4 @@ export * from "./memory";
 export * from "./automation";
 export * from "./events";
 export * from "./runtime";
+export * from "./persona";
