@@ -47,7 +47,24 @@ export const InteractionContextSchema = z.strictObject({
   userAffect: z.enum(["neutral", "positive", "frustrated", "sad", "anxious", "angry"]).optional(),
 }).refine(hasNoExplicitUndefined, ExplicitUndefinedIssue);
 
+/** Provider-neutral composition of stable, relational, and transient persona layers. */
+export const BehavioralContextSchema = z.strictObject({
+  identity: AssistantIdentitySchema,
+  personaProfile: PersonaProfileSchema,
+  relationalPreferences: RelationalPreferencesSchema,
+  interactionContext: InteractionContextSchema,
+}).superRefine((value, context) => {
+  if (value.personaProfile.identityId !== value.identity.id) {
+    context.addIssue({
+      code: "custom",
+      path: ["personaProfile", "identityId"],
+      message: "Persona profile must belong to the composed assistant identity",
+    });
+  }
+});
+
 export type AssistantIdentity = z.infer<typeof AssistantIdentitySchema>;
 export type PersonaProfile = z.infer<typeof PersonaProfileSchema>;
 export type RelationalPreferences = z.infer<typeof RelationalPreferencesSchema>;
 export type InteractionContext = z.infer<typeof InteractionContextSchema>;
+export type BehavioralContext = z.infer<typeof BehavioralContextSchema>;
