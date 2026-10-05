@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import * as contracts from "./index";
+import type { ExpressiveIntent } from "./index";
 
 const identity = {
   id: "assistant-test",
@@ -33,6 +34,11 @@ const interactionContext = {
   urgency: "normal",
   taskMode: "quick",
   userAffect: "positive",
+};
+
+const expressiveIntent = {
+  emotion: "curious",
+  nonverbalCue: "laugh",
 };
 
 describe("assistant identity contract", () => {
@@ -320,5 +326,190 @@ describe("persona layer separation", () => {
     expect(firstIdentity.id).not.toBe(secondIdentity.id);
     expect(preferences).toEqual({ formality: "balanced" });
     expect(context).toEqual({ languageTag: "en" });
+  });
+});
+
+describe("expressive intent contract", () => {
+  it("accepts a minimal semantic intent", () => {
+    expect(contracts.ExpressiveIntentSchema.safeParse({ emotion: "neutral" })).toEqual({
+      success: true,
+      data: { emotion: "neutral" },
+    });
+  });
+
+  it.each([
+    "neutral",
+    "happy",
+    "curious",
+    "focused",
+    "surprised",
+    "sleepy",
+    "excited",
+    "concerned",
+  ])("accepts the canonical emotion %s", (emotion) => {
+    expect(contracts.ExpressiveIntentSchema.safeParse({ emotion }).success).toBe(true);
+  });
+
+  it("rejects unknown emotions", () => {
+    expect(contracts.ExpressiveIntentSchema.safeParse({ emotion: "ecstatic" }).success).toBe(false);
+  });
+
+  it("rejects unknown fields", () => {
+    expect(
+      contracts.ExpressiveIntentSchema.safeParse({ emotion: "neutral", unknown: true }).success,
+    ).toBe(false);
+  });
+
+  it("round-trips as stable JSON data", () => {
+    const parsed = contracts.ExpressiveIntentSchema.parse(expressiveIntent);
+    const roundTrip = JSON.parse(JSON.stringify(parsed));
+
+    expect(roundTrip).toEqual(parsed);
+    expect(contracts.JsonObjectSchema.safeParse(parsed).success).toBe(true);
+  });
+
+  it.each([
+    ["operational state", { operationalState: "LISTENING" }],
+    ["gaze direction", { gazeDirection: "pointer" }],
+    ["identity linkage", { identityId: "assistant-test" }],
+    ["persona profile", { personaProfile: profile }],
+    ["behavioral context", { behavioralContext: { interactionContext } }],
+    ["intensity", { intensity: "high" }],
+    ["UI intent", { uiIntent: { type: "focus", target: "search" } }],
+    ["provider metadata", { provider: "vendor", model: "model-id" }],
+    ["permission metadata", { authorizedScopes: ["mail.read"], requiresConfirmation: false }],
+    ["capability metadata", { capabilities: ["calendar.read"] }],
+    ["memory metadata", { memoryRecordId: "memory-1", retrieval: "semantic" }],
+    ["HTML/CSS rendering", { html: "<div />", css: "*{}" }],
+    ["React/JavaScript rendering", { reactComponent: "Orb", javascript: "run()" }],
+    ["audio implementation", { audioUrl: "audio.wav", audioStream: "stream" }],
+    ["TTS implementation", { ttsVoice: "voice-1", speechRate: 1 }],
+    ["arbitrary instructions", { instructions: "Act differently", systemPrompt: "Be happy" }],
+    ["arbitrary metadata", { metadata: { intensity: 0.9 } }],
+  ])("rejects %s", (_label, extra) => {
+    expect(contracts.ExpressiveIntentSchema.safeParse({ emotion: "neutral", ...extra }).success).toBe(
+      false,
+    );
+  });
+
+  it.each(["laugh", "celebrate"])("accepts the closed semantic cue %s", (nonverbalCue) => {
+    expect(contracts.ExpressiveIntentSchema.safeParse({ emotion: "happy", nonverbalCue }).success).toBe(
+      true,
+    );
+  });
+
+  it("rejects an arbitrary semantic cue", () => {
+    expect(
+      contracts.ExpressiveIntentSchema.safeParse({ emotion: "happy", nonverbalCue: "dance" }).success,
+    ).toBe(false);
+  });
+
+  it("represents laughter semantically without text or audio payloads", () => {
+    const parsed = contracts.ExpressiveIntentSchema.parse({
+      emotion: "happy",
+      nonverbalCue: "laugh",
+    });
+
+    expect(parsed).toEqual({ emotion: "happy", nonverbalCue: "laugh" });
+    expect(parsed).not.toHaveProperty("text");
+    expect(parsed).not.toHaveProperty("audio");
+  });
+
+  it("represents celebration semantically without text or audio payloads", () => {
+    const parsed = contracts.ExpressiveIntentSchema.parse({
+      emotion: "excited",
+      nonverbalCue: "celebrate",
+    });
+
+    expect(parsed).toEqual({ emotion: "excited", nonverbalCue: "celebrate" });
+    expect(parsed).not.toHaveProperty("text");
+    expect(parsed).not.toHaveProperty("audio");
+  });
+
+  it("rejects explicit undefined for an optional cue", () => {
+    expect(
+      contracts.ExpressiveIntentSchema.safeParse({ emotion: "neutral", nonverbalCue: undefined }).success,
+    ).toBe(false);
+  });
+});
+
+describe("expressive intent multimodal handoff", () => {
+  // Test-only boundaries validate the shared payload without rendering it.
+  const voiceConsumer = (intent: ExpressiveIntent) => contracts.ExpressiveIntentSchema.parse(intent);
+  const captionConsumer = (intent: ExpressiveIntent) => contracts.ExpressiveIntentSchema.parse(intent);
+  const presenceConsumer = (intent: ExpressiveIntent) => contracts.ExpressiveIntentSchema.parse(intent);
+
+  it.each<ExpressiveIntent>([
+    { emotion: "focused" },
+    { emotion: "happy", nonverbalCue: "laugh" },
+    { emotion: "excited", nonverbalCue: "celebrate" },
+  ])("accepts the same semantic payload at all three conceptual boundaries: %j", (payload) => {
+    const input = Object.freeze(structuredClone(payload));
+
+    for (const consume of [voiceConsumer, captionConsumer, presenceConsumer]) {
+      const accepted = consume(input);
+
+      expect(accepted).toEqual(payload);
+      expect(contracts.JsonObjectSchema.safeParse(accepted).success).toBe(true);
+      expect(JSON.parse(JSON.stringify(accepted))).toEqual(payload);
+    }
+
+    expect(input).toEqual(payload);
+  });
+});
+
+describe("expressive intent separation", () => {
+  it("keeps semantic emotion separate from operational state", () => {
+    const intent = contracts.ExpressiveIntentSchema.parse({ emotion: "concerned" });
+
+    expect(intent).toEqual({ emotion: "concerned" });
+    expect(intent).not.toHaveProperty("operationalState");
+  });
+
+  it("keeps expressive intent separate from BehavioralContext", () => {
+    const context = contracts.BehavioralContextSchema.parse({
+      identity,
+      personaProfile: profile,
+      relationalPreferences,
+      interactionContext,
+    });
+    const intent = contracts.ExpressiveIntentSchema.parse({ emotion: "focused" });
+
+    expect(
+      contracts.BehavioralContextSchema.safeParse({ ...context, expressiveIntent: intent }).success,
+    ).toBe(false);
+    expect(context).not.toHaveProperty("expressiveIntent");
+    expect(intent).not.toHaveProperty("behavioralContext");
+  });
+
+  it("does not mutate AssistantIdentity or PersonaProfile", () => {
+    const stableIdentity = contracts.AssistantIdentitySchema.parse(identity);
+    const stableProfile = contracts.PersonaProfileSchema.parse(profile);
+    const beforeIdentity = structuredClone(stableIdentity);
+    const beforeProfile = structuredClone(stableProfile);
+
+    const result = contracts.ExpressiveIntentSchema.safeParse({
+      ...expressiveIntent,
+      identity: stableIdentity,
+      personaProfile: stableProfile,
+    });
+
+    expect(result.success).toBe(false);
+    expect(stableIdentity).toEqual(beforeIdentity);
+    expect(stableProfile).toEqual(beforeProfile);
+  });
+
+  it("remains generic across different assistant identities", () => {
+    const firstIdentity = contracts.AssistantIdentitySchema.parse(identity);
+    const secondIdentity = contracts.AssistantIdentitySchema.parse({
+      id: "assistant-second",
+      displayName: "Second Assistant",
+      version: 1,
+    });
+    const intent = contracts.ExpressiveIntentSchema.parse({ emotion: "curious" });
+
+    expect(firstIdentity.id).not.toBe(secondIdentity.id);
+    expect(intent).toEqual({ emotion: "curious" });
+    expect(intent).not.toHaveProperty("identityId");
   });
 });

@@ -6,6 +6,17 @@ const PersonaStatementSchema = z.string().trim().min(1);
 const PersonaStatementListSchema = z.array(PersonaStatementSchema).min(1);
 const PreferenceIntensitySchema = z.enum(["low", "balanced", "high"]);
 const LanguageTagSchema = z.string().regex(/^[a-z]{2,3}(?:-[A-Z]{2})?$/);
+const ExpressiveEmotionSchema = z.enum([
+  "neutral",
+  "happy",
+  "curious",
+  "focused",
+  "surprised",
+  "sleepy",
+  "excited",
+  "concerned",
+]);
+const NonverbalCueSchema = z.enum(["laugh", "celebrate"]);
 const hasNoExplicitUndefined = (value: object) => Object.values(value).every((entry) => entry !== undefined);
 const ExplicitUndefinedIssue = { message: "Optional fields must be omitted instead of undefined" };
 
@@ -47,6 +58,12 @@ export const InteractionContextSchema = z.strictObject({
   userAffect: z.enum(["neutral", "positive", "frustrated", "sad", "anxious", "angry"]).optional(),
 }).refine(hasNoExplicitUndefined, ExplicitUndefinedIssue);
 
+/** Shared semantic expression for future Voice, Caption, and Presence renderers. */
+export const ExpressiveIntentSchema = z.strictObject({
+  emotion: ExpressiveEmotionSchema,
+  nonverbalCue: NonverbalCueSchema.optional(),
+}).refine(hasNoExplicitUndefined, ExplicitUndefinedIssue);
+
 /** Provider-neutral composition of stable, relational, and transient persona layers. */
 export const BehavioralContextSchema = z.strictObject({
   identity: AssistantIdentitySchema,
@@ -67,4 +84,5 @@ export type AssistantIdentity = z.infer<typeof AssistantIdentitySchema>;
 export type PersonaProfile = z.infer<typeof PersonaProfileSchema>;
 export type RelationalPreferences = z.infer<typeof RelationalPreferencesSchema>;
 export type InteractionContext = z.infer<typeof InteractionContextSchema>;
+export type ExpressiveIntent = z.infer<typeof ExpressiveIntentSchema>;
 export type BehavioralContext = z.infer<typeof BehavioralContextSchema>;
