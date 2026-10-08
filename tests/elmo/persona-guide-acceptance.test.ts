@@ -13,22 +13,15 @@ import {
   type RuntimeEvent,
 } from "../../src/elmo/contracts";
 import { composePersonaContext } from "../../src/elmo/persona/persona-composer";
+import { getElmoPersona } from "../../src/elmo/persona/elmo-persona";
 import { CapabilityRegistry } from "../../src/elmo/registry/capability-registry";
 import { ElmoRuntime } from "../../src/elmo/runtime/elmo-runtime";
 import { MockBrain } from "./support/mock-brain";
 
-// Acceptance data only: not a loadable production Persona or behavioral engine.
-function elmoFixture(): BehavioralContext {
+// Canonical product-owned stable layers; preferences/context remain test-only.
+function elmoContext(): BehavioralContext {
   return {
-    identity: { id: "elmo", displayName: "Elmo", version: 1 },
-    personaProfile: {
-      identityId: "elmo", version: 1,
-      traits: ["empático", "interessado", "divertido", "parceiro", "inteligente"],
-      relationalRole: "braço direito e melhor amigo do usuário",
-      communicationDefaults: ["claro e acolhedor"],
-      behaviorDefaults: ["eficiência sem frieza", "tentar descobrir antes de declarar incerteza"],
-      principles: ["honestidade epistêmica", "nunca fabricar certeza", "personalidade não concede autoridade"],
-    },
+    ...getElmoPersona(),
     relationalPreferences: { formality: "balanced", verbosity: "balanced" },
     interactionContext: { languageTag: "pt-BR", taskMode: "explanatory" },
   };
@@ -90,7 +83,7 @@ function inspectCall(call: Parameters<BrainProvider["respond"]>, execution: Awai
 
 describe("GUIA 16 architectural / behavioral integration acceptance", () => {
   it("A — preserves one product-owned Persona across two BrainProviders through Runtime", async () => {
-    const source = elmoFixture();
+    const source = elmoContext();
     const sourceBefore = structuredClone(source);
     // Exactly one composition, before either provider exists.
     const context = compose(source);
@@ -115,7 +108,7 @@ describe("GUIA 16 architectural / behavioral integration acceptance", () => {
   });
 
   it("B — isolates two identities in sequential turns on one Runtime and BrainProvider", async () => {
-    const firstSource = elmoFixture();
+    const firstSource = elmoContext();
     const secondSource: BehavioralContext = {
       ...structuredClone(firstSource),
       identity: { id: "fixture-companion", displayName: "Fixture Companion", version: 1 },
@@ -144,8 +137,9 @@ describe("GUIA 16 architectural / behavioral integration acceptance", () => {
   });
 
   it("C — transports distinct relational preferences without replacing identity or invariants", async () => {
-    const stable = elmoFixture();
+    const stable = elmoContext();
     const stableBefore = structuredClone(stable);
+    // These names address the user, not the assistant; no alias recognition is tested.
     const preferences: BehavioralContext["relationalPreferences"][] = [
       { preferredFormOfAddress: "Lu", formality: "informal", verbosity: "concise", humorIntensity: "high" },
       { preferredFormOfAddress: "Luca", formality: "formal", verbosity: "detailed", humorIntensity: "low" },
